@@ -31,7 +31,7 @@ type HealthRespJson struct {
 
 func healthCheck(w http.ResponseWriter, r *http.Request) {
 	resp := HealthRespJson{
-		Healthy: true,
+		Healthy: "true",
 	}
 
 	js, err := json.Marshal(resp)
