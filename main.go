@@ -16,7 +16,7 @@ func main() {
 	}
 
 	server := http.NewServeMux()
-	server.Handle("/", home)
+	server.HandleFunc("/", home)
 	server.HandleFunc("/_healthcheck.json", healthCheck)
 
 	loggedRouter := handlers.LoggingHandler(os.Stdout, server)
