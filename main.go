@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -45,7 +46,7 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
-	cronFile, err = getConfig()
+	cronFile, err := getConfig()
 	if err != nil {
 		log.Printf("Error getting config: %+v", err)
 		http.Error(w, "Bad config file", http.StatusInternalServerError)
@@ -83,11 +84,11 @@ func getConfig() (ConfigFile, error) {
 
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return ConfigFile{}, err
 	}
 
 	var cf ConfigFile
-	err := json.Unmarshal(data, &cf)
+	err = json.Unmarshal(data, &cf)
 
 	return cf, nil
 }
