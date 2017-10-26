@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/gorilla/handlers"
+	"github.com/robfig/cron"
 )
 
 func main() {
@@ -17,8 +18,9 @@ func main() {
 	}
 
 	server := http.NewServeMux()
-	server.HandleFunc("/", home)
-	server.HandleFunc("/_healthcheck.json", healthCheck)
+	server.HandleFunc("/", homeHandler)
+	server.HandleFunc("/cron", cronHandler)
+	server.HandleFunc("/_healthcheck.json", healthCheckHandler)
 
 	loggedRouter := handlers.LoggingHandler(os.Stdout, server)
 
@@ -30,7 +32,7 @@ type HealthRespJson struct {
 	Healthy string `json:"healthy"`
 }
 
-func healthCheck(w http.ResponseWriter, r *http.Request) {
+func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	resp := HealthRespJson{
 		Healthy: "true",
 	}
@@ -45,8 +47,8 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Write(js)
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
-	cronFile, err := getConfig()
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	cronFile, err := GetConfig()
 	if err != nil {
 		log.Printf("Error getting config: %+v", err)
 		http.Error(w, "Bad config file", http.StatusInternalServerError)
@@ -63,8 +65,19 @@ func home(w http.ResponseWriter, r *http.Request) {
 	w.Write(js)
 }
 
-func cron(w http.ResponseWriter, r *http.Request) {
+func cronHandler(w http.ResponseWriter, r *http.Request) {
+	cf, err := GetConfig()
+	if err != nil {
+		log.Printf("Error getting config: %+v", err)
+		http.Error(w, "Bad config file", http.StatusInternalServerError)
+		return
+	}
 
+	for _, j := range cf.Jobs {
+		log.Printf("%+v", j)
+	}
+
+	w.Write([]byte("ok."))
 }
 
 type ConfigFile struct {
@@ -76,7 +89,11 @@ type Job struct {
 	CronRule string `json:"cron"`
 }
 
-func getConfig() (ConfigFile, error) {
+func (j *Job) GetSchedule() (cron.Schedule, error) {
+	return cron.Parse(j.CronRule)
+}
+
+func GetConfig() (ConfigFile, error) {
 	filename := os.Getenv("SCHEDULER_CONFIG")
 	if filename == "" {
 		filename = "config.example.json"
