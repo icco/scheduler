@@ -45,4 +45,49 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
+	cronFile, err = getConfig()
+	if err != nil {
+		log.Printf("Error getting config: %+v", err)
+		http.Error(w, "Bad config file", http.StatusInternalServerError)
+		return
+	}
+
+	js, err := json.Marshal(cronFile)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
+}
+
+func cron(w http.ResponseWriter, r *http.Request) {
+
+}
+
+type ConfigFile struct {
+	Jobs []Job `json:"jobs"`
+}
+
+type Job struct {
+	Name     string `json:"name"`
+	CronRule string `json:"cron"`
+}
+
+func getConfig() (ConfigFile, error) {
+	filename := os.Getenv("SCHEDULER_CONFIG")
+	if filename == "" {
+		filename = "config.example.json"
+	}
+
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	var cf ConfigFile
+	err := json.Unmarshal(data, &cf)
+
+	return cf, nil
 }
