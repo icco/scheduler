@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/robfig/cron"
@@ -74,10 +75,15 @@ func cronHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, j := range cf.Jobs {
-		log.Printf("%+v", j)
+		n, err := j.Next(time.Now())
+		if err != nil {
+			log.Printf("Error getting next run: %+v", err)
+			continue
+		}
+		log.Printf("%+v - %+v", j, n)
 	}
 
-	w.Write([]byte("ok."))
+	w.Write([]byte(`"ok."`))
 }
 
 type ConfigFile struct {
@@ -89,8 +95,13 @@ type Job struct {
 	CronRule string `json:"cron"`
 }
 
-func (j *Job) GetSchedule() (cron.Schedule, error) {
-	return cron.Parse(j.CronRule)
+func (j *Job) Next(t time.Time) (time.Time, error) {
+	sched, err := cron.Parse(j.CronRule)
+	if err != nil {
+		return time.Now(), err
+	}
+
+	return sched.Next(t), nil
 }
 
 func GetConfig() (ConfigFile, error) {
