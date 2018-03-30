@@ -1,10 +1,12 @@
 {
   "jobs": [
     {
-      "name": "test 1",
+      "name": "test",
+      "description": "A test."
       "cron": "* * * * *",
       "image": "123456789000.dkr.ecr.us-east-1.amazonaws.com/helloworld:master",
-      "command": ""
+      "environment": {},
+      "command": []
     }
   ]
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -9,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -124,6 +128,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 
 	js, err := json.Marshal(cronFile)
 	if err != nil {
+		log.Printf("Error marshaling: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -157,8 +162,12 @@ type ConfigFile struct {
 }
 
 type Job struct {
-	Name     string `json:"name"`
-	CronRule string `json:"cron"`
+	RawName     string            `json:"name"`
+	Description string            `json:"description"`
+	CronRule    string            `json:"cron"`
+	Image       string            `json:"image"`
+	Command     []string          `json:"command"`
+	Environment map[string]string `json:"environment"`
 }
 
 func (j *Job) Next(t time.Time) (time.Time, error) {
@@ -170,10 +179,57 @@ func (j *Job) Next(t time.Time) (time.Time, error) {
 	return sched.Next(t), nil
 }
 
+func (j *Job) Name() *string {
+	// TODO: Strip out invalid characters
+	name := j.RawName
+	return aws.String(fmt.Sprintf("scheduled-%s", name))
+}
+
 // Run takes the docker image and the command, builds a task definition,
 // submits it to ECS, and runs the task.
 func (j *Job) Run() {
+	svc := ecs.New(session.New())
 
+	containerDef := &ecs.ContainerDefinition{
+		Essential:         aws.Bool(true),
+		Image:             aws.String(j.Image),
+		MemoryReservation: aws.Int64(1024),
+		Name:              j.Name(),
+	}
+
+	if len(j.Command) > 0 {
+		cmd := []*string{}
+		for _, i := range j.Command {
+			cmd = append(cmd, aws.String(i))
+		}
+
+		containerDef.Command = cmd
+	}
+
+	if len(j.Environment) > 0 {
+		pairs := []*ecs.KeyValuePair{}
+		for k, v := range j.Environment {
+			pairs = append(pairs, &ecs.KeyValuePair{
+				Name:  aws.String(k),
+				Value: aws.String(v),
+			})
+		}
+		containerDef.Environment = pairs
+	}
+
+	input := &ecs.RegisterTaskDefinitionInput{
+		ContainerDefinitions: []*ecs.ContainerDefinition{containerDef},
+		Family:               j.Name(),
+		TaskRoleArn:          aws.String(""),
+	}
+
+	result, err := svc.RegisterTaskDefinition(input)
+	if err != nil {
+		log.Printf("Task Def Error: %+v", err.Error())
+		return
+	}
+
+	log.Printf("%+v", result)
 }
 
 func GetConfig() (ConfigFile, error) {
@@ -187,8 +243,11 @@ func GetConfig() (ConfigFile, error) {
 		return ConfigFile{}, err
 	}
 
+	log.Printf("%+s", data)
+
 	var cf ConfigFile
 	err = json.Unmarshal(data, &cf)
 
+	log.Printf("%+v", cf)
 	return cf, nil
 }
