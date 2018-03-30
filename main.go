@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/pquerna/ffjson/ffjson"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/robfig/cron"
 	"gopkg.in/unrolled/render.v1"
@@ -126,7 +126,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	js, err := json.Marshal(cronFile)
+	js, err := ffjson.Marshal(cronFile)
 	if err != nil {
 		log.Printf("Error marshaling: %+v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -246,7 +246,7 @@ func GetConfig() (ConfigFile, error) {
 	log.Printf("%+s", data)
 
 	var cf ConfigFile
-	err = json.Unmarshal(data, &cf)
+	err = ffjson.Unmarshal(data, &cf)
 
 	log.Printf("%+v", cf)
 	return cf, nil
