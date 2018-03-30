@@ -2,7 +2,9 @@
   "jobs": [
     {
       "name": "test 1",
-      "cron": "* * * * *"
+      "cron": "* * * * *",
+      "image": "123456789000.dkr.ecr.us-east-1.amazonaws.com/helloworld:master",
+      "command": ""
     }
   ]
 }
