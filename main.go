@@ -6,11 +6,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/robfig/cron"
 	"gopkg.in/unrolled/render.v1"
@@ -62,12 +62,6 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(secureMiddleware.Handler)
 	r.Use(SSLMiddleware)
-
-	// Turnstile when not local
-	if !SecureMiddlewareOptions.IsDevelopment {
-		r.Use(TurnstileMiddleware)
-		r.Mount("/auth", TurnstileProxyHandler())
-	}
 
 	// Metrics
 	r.Get("/_healthcheck.json", healthCheckHandler)
