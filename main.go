@@ -170,6 +170,12 @@ func (j *Job) Next(t time.Time) (time.Time, error) {
 	return sched.Next(t), nil
 }
 
+// Run takes the docker image and the command, builds a task definition,
+// submits it to ECS, and runs the task.
+func (j *Job) Run() {
+
+}
+
 func GetConfig() (ConfigFile, error) {
 	filename := os.Getenv("SCHEDULER_CONFIG")
 	if filename == "" {
